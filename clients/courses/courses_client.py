@@ -2,21 +2,46 @@ from clients.api_client import APIClient
 from typing import TypedDict
 from httpx import Response
 
+from clients.files.files_client import File
 from clients.private_http_builder import get_private_http_client, AuthenticationUserDict
+from clients.users.private_users_client import User
 
 
-class QueryParamsDict(TypedDict):
+class Course(TypedDict):
+    """Описание структуры курса"""
+    id: str
+    title: str
+    maxScore: int
+    minScore: int
+    description: str
+    previewFileId: File
+    createdByUserId: User
+
+
+class GetCoursesQueryDict(TypedDict):
+    """
+    Описание структуры запроса на получение списка курсов.
+    """
     userId: str
 
 
-class CreateCourseDict(TypedDict):
+class CreateCourseRequestDict(TypedDict):
+    """
+    Описание структуры запроса на создание курса.
+    """
     title: str
-    maxScor: int
+    maxScore: int
     minScore: int
     description: str
     estimatedTime: str
     previewFileId: str
-    createdByUserId:str
+    createdByUserId: str
+
+class CreateCourseResponseDict(TypedDict):
+    """
+    Описание структуры ответа на создание курса.
+    """
+    course: Course
 
 
 class UpdateCourseDict(TypedDict):
@@ -30,7 +55,7 @@ class UpdateCourseDict(TypedDict):
 class CoursesClient(APIClient):
     """Клиент для работы с /api/v1/courses"""
 
-    def get_courses_api(self, request: QueryParamsDict) -> Response:
+    def get_courses_api(self, request: GetCoursesQueryDict) -> Response:
         """
         Метод для получение списка курсов для определенного пользователя.
         :param request: Словарь с ключом userId
@@ -46,7 +71,7 @@ class CoursesClient(APIClient):
         """
         return self.get(url=f'/api/v1/courses/{course_id}')
 
-    def create_course_api(self, request: CreateCourseDict) -> Response:
+    def create_course_api(self, request: CreateCourseRequestDict) -> Response:
         """
         Метод для создание курса
         :param request: Словарь с ключами title, maxScor, minScore, description, estimatedTime,
@@ -71,6 +96,10 @@ class CoursesClient(APIClient):
         :return: Возвращает ответ вида httpx.Response
         """
         return self.delete(url=f'/api/v1/courses/{course_id}')
+
+    def create_course(self, request: CreateCourseRequestDict) -> CreateCourseResponseDict:
+        response = self.create_course_api(request=request)
+        return response.json()
 
 
 def get_courses_client(user: AuthenticationUserDict) -> CoursesClient:
