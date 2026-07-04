@@ -10,7 +10,7 @@ class AuthenticationUserDict(TypedDict):
     email: str
     password: str
 
-def get_private_http_client(user: AuthenticationUserDict) -> Client:
+def get_private_http_client(user: AuthenticationUserSchema) -> Client:
     """
        Функция создаёт экземпляр httpx.Client с аутентификацией пользователя.
 
