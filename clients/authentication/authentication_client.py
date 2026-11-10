@@ -1,40 +1,10 @@
-from typing import TypedDict
-
+import allure
 from httpx import Response
-
+from clients.authentication.authentication_schema import  RefreshRequestTokenSchema, LoginRequestSchema, \
+    LoginResponseSchema
 from clients.api_client import APIClient
 from clients.public_http_builder import get_public_http_client
-
-
-class Token(TypedDict):
-    """
-        Описание структуры аутентификационных токенов.
-        """
-    tokenType: str
-    accessToken: str
-    refreshToken: str
-
-
-class LoginRequestDict(TypedDict):
-    """
-    Описание структуры запроса на аутентификацию.
-    """
-    email: str
-    password: str
-
-
-class LoginResponseDict(TypedDict):
-    """
-    Описание структуры ответа аутентификации.
-    """
-    token: Token
-
-
-class RefreshRequestToken(TypedDict):
-    """
-    Описание структуры запроса для обновления токена.
-    """
-    refreshToken: str
+from tools.routes import ApiRoutes
 
 
 class AuthenticationClient(APIClient):
@@ -42,21 +12,24 @@ class AuthenticationClient(APIClient):
     Клиент для работы с /api/v1/authentication
     """
 
-    def login_api(self, request: LoginRequestDict) -> Response:
+    @allure.step('Authentication user')
+    def login_api(self, request: LoginRequestSchema) -> Response:
         """
            Метод выполняет аутентификацию пользователя.
 
            :param request: Словарь с email и password.
            :return: Ответ от сервера в виде объекта httpx.Response
        """
-        return self.post(url='/api/v1/authentication/login', json=request)
+        return self.post(url=f'{ApiRoutes.AUTHENTICATION}/login', json=request.model_dump(by_alias=True))
 
-    def refresh_api(self, request: RefreshRequestToken) -> Response:
-        return self.post(url='/api/v1/authentication/refresh', json=request)
+    @allure.step('Refresh authentication token')
+    def refresh_api(self, request: RefreshRequestTokenSchema) -> Response:
+        return self.post(url=f'{ApiRoutes.AUTHENTICATION}/refresh', json=request.model_dump(by_alias=True))
 
-    def login(self, request: LoginRequestDict) -> LoginResponseDict:
-        response =  self.login_api(request)
-        return response.json()
+    def login(self, request: LoginRequestSchema) -> LoginResponseSchema:
+        response = self.login_api(request)
+        return LoginResponseSchema.model_validate_json(response.text)
+
 
 def get_authentication_client() -> AuthenticationClient:
     """
@@ -66,4 +39,3 @@ def get_authentication_client() -> AuthenticationClient:
     """
 
     return AuthenticationClient(client=get_public_http_client())
-

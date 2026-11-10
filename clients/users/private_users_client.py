@@ -1,39 +1,25 @@
+import allure
+
 from clients.api_client import APIClient
 from httpx import Response
-from typing import TypedDict
+from clients.private_http_builder import get_private_http_client, AuthenticationUserSchema
+from clients.users.users_schema import UpdateUserRequestSchema, GetUserResponseSchema
+from tools.routes import ApiRoutes
 
-from clients.private_http_builder import get_private_http_client, AuthenticationUserDict
-
-
-class RequestUpdateUserApiDict(TypedDict):
-    """Описание структуры запроса на обновление пользователя"""
-
-    email: str | None
-    lastName: str | None
-    firstName: str | None
-    middleName: str | None
-
-class User(TypedDict):
-    id: str
-    email: str
-    lastName: str
-    firstName: str
-    middleName: str
-
-class ResponseGetUserDict(TypedDict):
-    user: User
 
 class PrivateUsersClient(APIClient):
     """Клиент для работы с /api/v1/users"""
 
+    @allure.step('GET user me')
     def get_user_me_api(self) -> Response:
         """
         Метод поулчения текущего пользователя
 
         :return: Ответ от сервера в виде объекта httpx.Response
         """
-        return self.get(url='/api/v1/users/me')
+        return self.get(url=f'{ApiRoutes.USERS}/me')
 
+    @allure.step('GET user by id: {user_id}')
     def get_user_api(self, user_id: str) -> Response:
         """
         Метод получение пользователя по айди
@@ -41,9 +27,10 @@ class PrivateUsersClient(APIClient):
         :param user_id: Индификатор пользователя
         :return: Ответ от сервера в виде объекта httpx.Response
         """
-        return self.get(url=f'/api/v1/users/{user_id}')
+        return self.get(url=f'{ApiRoutes.USERS}/{user_id}')
 
-    def update_user_api(self, user_id: str, request: RequestUpdateUserApiDict) -> Response:
+    @allure.step('Update user by id: {user_id}')
+    def update_user_api(self, user_id: str, request: UpdateUserRequestSchema) -> Response:
         """
         Метод частичного обновления данных пользователя
 
@@ -51,8 +38,9 @@ class PrivateUsersClient(APIClient):
         :param request: Словарь с email, lastName, firstName, middleName
         :return: Ответ от сервера в виде объекта httpx.Response
         """
-        return self.patch(url=f'/api/v1/users/{user_id}', json=request)
+        return self.patch(url=f'{ApiRoutes.USERS}/{user_id}', json=request.model_dump(by_alias=True))
 
+    @allure.step('Delete user by id: {user_id}')
     def delete_user_api(self, user_id: str) -> Response:
         """
         Метод удаления пользователя по айди
@@ -60,13 +48,13 @@ class PrivateUsersClient(APIClient):
         :param user_id: Индификатор пользователя
         :return: Ответ от сервера в виде объекта httpx.Response
         """
-        return self.delete(url=f'/api/v1/users/{user_id}')
+        return self.delete(url=f'{ApiRoutes.USERS}/{user_id}')
 
-    def get_user(self, user_id: str ) -> ResponseGetUserDict:
+    def get_user(self, user_id: str ) -> GetUserResponseSchema:
         response = self.get_user_api(user_id=user_id)
-        return response.json()
+        return GetUserResponseSchema.model_validate_json(response.text)
 
-def get_private_users_client(user: AuthenticationUserDict) -> PrivateUsersClient:
+def get_private_users_client(user: AuthenticationUserSchema) -> PrivateUsersClient:
     """
     Функция создает экзепляр PrivateUsersClient с уже настроенным HTTP-клиентом
     :return: Готовый к использованию PrivateUsersClient

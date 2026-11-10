@@ -1,141 +1,94 @@
+import allure
+
 from clients.api_client import APIClient
 from httpx import Response
-from typing import TypedDict
 
-from clients.private_http_builder import AuthenticationUserDict, get_private_http_client
-
-class Exercise(TypedDict):
-    """Структура курса"""
-    id: str
-    title: str
-    courseId: str
-    maxScore: int
-    minScore: int
-    orderIndex: int
-    description: str
-    estimatedTime: str
-
-
-class GetExercisesResponseDict(TypedDict):
-    """Описание структуры ответа на запрос всех заданий у курса"""
-    exercises: list[Exercise]
-
-
-class CreateExercisesResponseDict(TypedDict):
-    """Описание структуры ответа на создание курса"""
-    exercise: Exercise
-
-
-class GetExerciseResponseDict(TypedDict):
-    """Описание структуры ответа на определенное задание"""
-    exercise: Exercise
-
-
-class UpdateExerciseResponseDict(TypedDict):
-    """Описание структуры ответа по обновленным полям"""
-    exercise: Exercise
-
-
-class QueryExercisesDict(TypedDict):
-    """Словарь для айди курса"""
-    courseId: str
-
-
-class CreateExercisesRequestDict(TypedDict):
-    """Словарь для создания задания"""
-    title: str
-    courseId: str
-    maxScore: int
-    minScore:int
-    orderIndex:int
-    description: str
-    estimatedTime: str
-
-
-class UpdateExercisesRequestDict(TypedDict):
-    """Словарь для обновления задания"""
-    title: str | None
-    maxScore: int | None
-    minScore: int | None
-    orderIndex: int | None
-    description: str | None
-    estimatedTime: str | None
+from clients.exercises.exercises_schema import QueryExercisesSchema, CreateExerciseRequestSchema, \
+    UpdateExercisesRequestSchema, GetExercisesResponseSchema, CreateExercisesResponseSchema, \
+    UpdateExerciseResponseSchema
+from clients.private_http_builder import AuthenticationUserSchema, get_private_http_client
+from tools.routes import ApiRoutes
 
 
 class ExercisesClient(APIClient):
     """Клиент для /api/v1/exercises"""
-
-    def get_exercises_api(self, query: QueryExercisesDict) -> Response:
+    @allure.step('GET exercises')
+    def get_exercises_api(self, query: QueryExercisesSchema) -> Response:
         """
         Метод для получение списка заданий для определенного курса.
         :param query: Словарь с ключом courseId
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.get(url='/api/v1/exercises', params=query)
+        return self.get(url=ApiRoutes.EXERCISES, params=query.model_dump(by_alias=True))
 
-
+    @allure.step('GET exercises by id: {exercise_id}')
     def get_exercise_api(self, exercise_id: str) -> Response:
         """
         Метод для получение задания по id
         :param exercise_id: Идентификатор задания
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.get(url=f'/api/v1/exercises/{exercise_id}')
+        return self.get(url=f'{ApiRoutes.EXERCISES}/{exercise_id}')
 
-    def create_exercise_api(self, request: CreateExercisesRequestDict) -> Response:
+    @allure.step('Create exercises')
+    def create_exercise_api(self, request: CreateExerciseRequestSchema) -> Response:
         """
         Метод для создания задания
         :param request: Словарь с ключами title, courseId, maxScore, minScore, orderIndex, description, estimatedTime
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.post(url='/api/v1/exercises', json=request)
+        return self.post(url=ApiRoutes.EXERCISES, json=request.model_dump(by_alias=True))
 
-    def update_exercise_api(self, exercise_id: str, request: UpdateExercisesRequestDict) -> Response:
+    @allure.step('Update exercises by id: {exercise_id}')
+    def update_exercise_api(self, exercise_id: str, request: UpdateExercisesRequestSchema) -> Response:
         """
         Метод для обновление задания
         :param exercise_id: Идентификатор задания
         :param request: Словарь с ключами title, maxScore, minScore, orderIndex, description, estimatedTime
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.patch(url=f'/api/v1/exercises/{exercise_id}', json=request)
+        return self.patch(
+            url=f'{ApiRoutes.EXERCISES}/{exercise_id}',
+            json=request.model_dump(by_alias=True)
+        )
 
+    @allure.step('Delete exercises by id: {exercise_id}')
     def delete_exercise_api(self, exercise_id: str) -> Response:
         """
         Метод для удаление задания
         :param exercise_id: Идентификатор задания
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.delete(url=f'/api/v1/exercises/{exercise_id}')
+        return self.delete(url=f'{ApiRoutes.EXERCISES}/{exercise_id}')
 
-    def get_exercises(self, query: QueryExercisesDict) -> GetExercisesResponseDict:
+    def get_exercises(self, query: QueryExercisesSchema) -> GetExercisesResponseSchema:
         """
         Метод для запроса задания по courseId через query
         :param query: Словарь с ключом courseId
         :return: Возвращает в овтете задания
         """
         response = self.get_exercises_api(query)
-        return response.json()
+        return GetExercisesResponseSchema.model_validate_json(response.text)
 
-
-    def get_exercise(self, exercise_id: str) -> GetExerciseResponseDict:
+    def get_exercise(self, exercise_id: str) -> GetExercisesResponseSchema:
         """
         Метод для запроса определенного задания
         :param exercise_id: id задания
         :return: Возвращает ответ по запрашиваемоу заданию
         """
         response = self.get_exercise_api(exercise_id)
-        return response.json()
+        return GetExercisesResponseSchema.model_validate_json(response.text)
 
-    def create_exercise(self, request: CreateExercisesRequestDict) -> CreateExercisesResponseDict:
+    def create_exercise(self, request: CreateExerciseRequestSchema) -> CreateExercisesResponseSchema:
         """
         Метод создания курса
         :param request: Словарь с ключами title, maxScore, minScore, orderIndex, description, estimatedTime
         :return: Возвращает ответ с информацией о созданном задании
         """
         response = self.create_exercise_api(request)
-        return response.json()
+        return CreateExercisesResponseSchema.model_validate_json(response.text)
 
-    def update_exercise(self, exercise_id: str, request: UpdateExercisesRequestDict) -> UpdateExerciseResponseDict:
+    def update_exercise(self, exercise_id: str, request: UpdateExercisesRequestSchema) -> UpdateExerciseResponseSchema:
         """
         Метод обновляет задание
         :param exercise_id: id задания
@@ -143,9 +96,10 @@ class ExercisesClient(APIClient):
         :return: Возвращает измененное задание
         """
         response = self.update_exercise_api(exercise_id=exercise_id, request=request)
-        return response.json()
+        return UpdateExerciseResponseSchema.model_validate_json(response.text)
 
-def get_exercise_client(user: AuthenticationUserDict) -> ExercisesClient:
+
+def get_exercise_client(user: AuthenticationUserSchema) -> ExercisesClient:
     """
    Функция создает экземпляпр ExercisesClient с уже настроенным HTTP-клиентом
    :return: Готовый к использованию ExercisesClient

@@ -1,108 +1,69 @@
+import allure
+
 from clients.api_client import APIClient
-from typing import TypedDict
 from httpx import Response
-
-from clients.files.files_client import File
-from clients.private_http_builder import get_private_http_client, AuthenticationUserDict
-from clients.users.private_users_client import User
-
-
-class Course(TypedDict):
-    """Описание структуры курса"""
-    id: str
-    title: str
-    maxScore: int
-    minScore: int
-    description: str
-    previewFileId: File
-    createdByUserId: User
-
-
-class GetCoursesQueryDict(TypedDict):
-    """
-    Описание структуры запроса на получение списка курсов.
-    """
-    userId: str
-
-
-class CreateCourseRequestDict(TypedDict):
-    """
-    Описание структуры запроса на создание курса.
-    """
-    title: str
-    maxScore: int
-    minScore: int
-    description: str
-    estimatedTime: str
-    previewFileId: str
-    createdByUserId: str
-
-class CreateCourseResponseDict(TypedDict):
-    """
-    Описание структуры ответа на создание курса.
-    """
-    course: Course
-
-
-class UpdateCourseDict(TypedDict):
-    title: str | None
-    maxScor: int | None
-    minScore: int | None
-    description: str | None
-    estimatedTime: str | None
+from clients.courses.course_schema import GetCoursesQuerySchema, CreateCourseRequestSchema, CreateCourseResponseSchema, \
+    UpdateCourseRequestSchema
+from clients.private_http_builder import get_private_http_client, AuthenticationUserSchema
+from tools.routes import ApiRoutes
 
 
 class CoursesClient(APIClient):
     """Клиент для работы с /api/v1/courses"""
 
-    def get_courses_api(self, request: GetCoursesQueryDict) -> Response:
+    @allure.step('Get courses')
+    def get_courses_api(self, request: GetCoursesQuerySchema) -> Response:
         """
         Метод для получение списка курсов для определенного пользователя.
         :param request: Словарь с ключом userId
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.get(url='/api/v1/courses', params=request)
+        return self.get(url=ApiRoutes.COURSES, params=request.model_dump(by_alias=True))
 
+    @allure.step('Get course by id: {course_id}')
     def get_course_api(self, course_id: str) -> Response:
         """
         Метод для получение курса по идентификартору
         :param course_id: Идентификатора курса
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.get(url=f'/api/v1/courses/{course_id}')
+        return self.get(url=f'{ApiRoutes.COURSES}/{course_id}')
 
-    def create_course_api(self, request: CreateCourseRequestDict) -> Response:
+    @allure.step('Create courses')
+    def create_course_api(self, request: CreateCourseRequestSchema) -> Response:
         """
         Метод для создание курса
         :param request: Словарь с ключами title, maxScor, minScore, description, estimatedTime,
         previewFileId, createdByUserId
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.post(url='/api/v1/courses', json=request)
+        return self.post(url=ApiRoutes.COURSES, json=request.model_dump(by_alias=True))
 
-    def update_course_api(self, course_id: str, request: UpdateCourseDict) -> Response:
+    @allure.step('Update courses by id: {course_id}')
+    def update_course_api(self, course_id: str, request: UpdateCourseRequestSchema) -> Response:
         """
         Метод для обновление курса по идентификартору
         :param course_id: Идентификатора курса
         :param request: Словарь с ключами title, maxScor, minScore, description, estimatedTime
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.patch(url=f'/api/v1/courses/{course_id}', json=request)
+        return self.patch(url=f'{ApiRoutes.COURSES}/{course_id}', json=request.model_dump(by_alias=True))
 
+    @allure.step('Delete courses by id: {course_id}')
     def delete_course_api(self, course_id: str) -> Response:
         """
         Метод для удаление курса по идентификатору
         :param course_id: Идентификатор курса
         :return: Возвращает ответ вида httpx.Response
         """
-        return self.delete(url=f'/api/v1/courses/{course_id}')
+        return self.delete(url=f'{ApiRoutes.COURSES}/{course_id}')
 
-    def create_course(self, request: CreateCourseRequestDict) -> CreateCourseResponseDict:
+    def create_course(self, request: CreateCourseRequestSchema) -> CreateCourseResponseSchema:
         response = self.create_course_api(request=request)
-        return response.json()
+        return CreateCourseResponseSchema.model_validate_json(response.text)
 
 
-def get_courses_client(user: AuthenticationUserDict) -> CoursesClient:
+def get_courses_client(user: AuthenticationUserSchema) -> CoursesClient:
     """
     Функция создает экземпляпр CoursesClient с уже настроенным HTTP-клиентом
     :return: Готовый к использованию CoursesClient
